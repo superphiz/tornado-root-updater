@@ -1,0 +1,19 @@
+{
+  "name": "root-updater",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "keywords": [],
+  "author": "Roman Semenov <semenov.roma@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "circomlib": "git+https://github.com/tornadocash/circomlib.git#c372f14d324d57339c88451834bf2824e73bbdbc",
+    "dotenv": "^8.2.0",
+    "ioredis": "^4.17.3",
+    "snarkjs": "git+https://github.com/tornadocash/snarkjs.git#869181cfaf7526fe8972073d31655493a04326d5",
+    "web3": "^1.2.11"
+  }
+}
