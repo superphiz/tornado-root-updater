@@ -3,7 +3,7 @@ const Web3 = require('web3')
 const Redis = require('ioredis')
 const farmAbi = require('../abi/farm.json')
 const instances = require('../instances.json')
-const merkleTree = require('../lib/merkleTree')
+const merkleTree = require('fixed-merkle-tree')
 const { getTornadoDeposits, getFarmDeposits } = require('./events')
 const { toFixedHex } = require('./utils')
 
@@ -33,9 +33,9 @@ async function main() {
   while(deposits.length) {
     const batch = deposits.splice(0, process.env.INSERT_BATCH_SIZE)
     const leaves = []
-    const oldRoot = toFixedHex(await tree.root())
+    const oldRoot = toFixedHex(tree.root())
     for (const d of batch) {
-      await tree.insert(d.leafHash)
+      tree.insert(d.leafHash)
       leaves.push({
         instance: d.instance,
         hash: d.hash,
@@ -43,11 +43,11 @@ async function main() {
         index: index++,
       })
     }
-    const newRoot = toFixedHex(await tree.root())
+    const newRoot = toFixedHex(tree.root())
 
     console.log(`Submitting tree update from ${oldRoot} to ${newRoot} adding ${leaves.length} new leaves`)
     const r = await farm.methods.updateDepositsRoot(oldRoot, newRoot, leaves).send({ from: web3.eth.defaultAccount, gas: 4e6})
-    console.log(r.transactionHash)
+    console.log(`Transaction: https://etherscan.io/tx/${r.transactionHash}`)
   }
   if (newDeposits.length > 0) {
     await redis.rpush('deposits', newDeposits)

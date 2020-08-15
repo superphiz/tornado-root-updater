@@ -1,6 +1,6 @@
 const tornadoAbi = require('../abi/tornado.json')
 const farmAbi = require('../abi/farm.json')
-const { toFixedHex, mimcHash } = require('./utils')
+const { mimcHash } = require('./utils')
 
 // todo make global web3
 const Web3 = require('web3')
