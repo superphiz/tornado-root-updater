@@ -9,5 +9,5 @@ const mimcHash = (items) => toFixedHex(mimcsponge.multiHash(items.map((item) => 
 
 module.exports = {
   toFixedHex,
-  mimcHash
+  mimcHash,
 }

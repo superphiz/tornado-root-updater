@@ -16,7 +16,7 @@ async function getTornadoEvents(instance, eventName, hashName, startBlock, endBl
       instance,
       hash: e.returnValues[hashName],
       block: e.blockNumber,
-      leafHash: mimcHash([instance, e.returnValues[hashName], e.blockNumber])
+      leafHash: mimcHash([instance, e.returnValues[hashName], e.blockNumber]),
     }))
 }
 
@@ -45,15 +45,15 @@ async function getFarmEvents(eventName, startBlock, endBlock) {
       instance: e.returnValues.instance,
       hash: e.returnValues.hash,
       block: e.returnValues.block,
-      leafHash: mimcHash([e.returnValues.instance, e.returnValues.hash, e.returnValues.block])
+      leafHash: mimcHash([e.returnValues.instance, e.returnValues.hash, e.returnValues.block]),
     }))
 }
 
-async function getFarmDeposits(startBlock, endBlock) {
+function getFarmDeposits(startBlock, endBlock) {
   return getFarmEvents('DepositData', startBlock, endBlock)
 }
 
-async function getFarmWithdrawals(startBlock, endBlock) {
+function getFarmWithdrawals(startBlock, endBlock) {
   return getFarmEvents('WithdrawalData', startBlock, endBlock)
 }
 

@@ -46,7 +46,7 @@ async function main() {
     const newRoot = toFixedHex(tree.root())
 
     console.log(`Submitting tree update from ${oldRoot} to ${newRoot} adding ${leaves.length} new leaves`)
-    const r = await farm.methods.updateDepositsRoot(oldRoot, newRoot, leaves).send({ from: web3.eth.defaultAccount, gas: 4e6})
+    const r = await farm.methods.updateDepositsRoot(oldRoot, newRoot, leaves).send({ from: web3.eth.defaultAccount, gas: 4e6 })
     console.log(`Transaction: https://etherscan.io/tx/${r.transactionHash}`)
   }
   if (newDeposits.length > 0) {
