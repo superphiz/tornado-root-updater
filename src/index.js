@@ -1,56 +1,83 @@
 require('dotenv').config()
-const Web3 = require('web3')
-const Redis = require('ioredis')
-const farmAbi = require('../abi/farm.json')
-const instances = require('../instances.json')
+const { web3, redis, farm } = require('./singletons')
+const instances = require('../instanceAddresses.json')
 const merkleTree = require('fixed-merkle-tree')
-const { getTornadoDeposits, getFarmDeposits } = require('./events')
-const { toFixedHex } = require('./utils')
+const { getFarmEvents, getTornadoEvents } = require('./events')
+const { toFixedHex, poseidonHash2 } = require('./utils')
 
-const web3 = new Web3(process.env.RPC_URL)
-const redis = new Redis(process.env.REDIS_URL)
+async function getEvents(startBlock, endBlock, type) {
+  const farmCachedEvents = await redis.lrange(type, 0, -1)
+  const farmEvents = (await getFarmEvents(startBlock, endBlock, type)).map(x => x.leafHash)
+  const knownEvents = farmCachedEvents.concat(farmEvents)
+  const knownEventsSet = new Set(knownEvents)
+
+  let newEvents = await getTornadoEvents(instances, startBlock, endBlock, type)
+  newEvents = newEvents.filter(x => !knownEventsSet.has(x.leafHash))
+  return { knownEvents, newEvents }
+}
 
 async function main() {
-  const account = web3.eth.accounts.privateKeyToAccount('0x' + process.env.PRIVATE_KEY)
-  web3.eth.accounts.wallet.add('0x' + process.env.PRIVATE_KEY)
-  web3.eth.defaultAccount = account.address
-
-  const farm = new web3.eth.Contract(farmAbi, process.env.FARM_ADDR)
-  const startingBlock = Number(await redis.get('lastBlock') ?? 0) + 1
+  const startingBlock = Number(await redis.get('lastBlock') || 0) + 1
   const currentBlock = await web3.eth.getBlockNumber() - 12
+  const types = ['deposit', 'withdraw']
+
+  let knownEvents = {}
+  let newEvents = {}
+  let trees = {}
+  let index = {}
+
   console.log(`Getting events for blocks ${startingBlock} to ${currentBlock}`)
-  const farmCachedDeposits = await redis.lrange('deposits', 0, -1)
-  const farmDeposits = (await getFarmDeposits(startingBlock, currentBlock)).map(x => x.leafHash)
-  const knownDeposits = farmCachedDeposits.concat(farmDeposits)
-  const tree = new merkleTree(process.env.MERKLE_TREE_LEVELS, knownDeposits)
+  for (let type of types) {
+    ({
+      knownEvents: knownEvents[type],
+      newEvents: newEvents[type],
+    } = await getEvents(startingBlock, currentBlock, type))
+    trees[type] = new merkleTree(process.env.MERKLE_TREE_LEVELS, knownEvents[type], { hashFunction: poseidonHash2 })
+    index[type] = knownEvents[type].length
+  }
 
-  let deposits = await getTornadoDeposits(instances, startingBlock, currentBlock)
-  const knownDepositsSet = new Set(knownDeposits)
-  deposits = deposits.filter(x => !knownDepositsSet.has(x.leafHash))
-  const newDeposits = deposits.map(x => x.leafHash)
+  // zip deposit and withdraw arrays
+  let events = Object.keys(newEvents).map(type => newEvents[type].map(event => ({ type, event }))).flat()
 
-  let index = knownDeposits.length
-  while(deposits.length) {
-    const batch = deposits.splice(0, process.env.INSERT_BATCH_SIZE)
-    const leaves = []
-    const oldRoot = toFixedHex(tree.root())
+  while(events.length) {
+    let oldRoots = {}
+    let newRoots = {}
+    let leaves = {}
+
+    for (let type of types) {
+      leaves[type] = []
+      oldRoots[type] = toFixedHex(trees[type].root())
+    }
+    const batch = events.splice(0, process.env.INSERT_BATCH_SIZE)
     for (const d of batch) {
-      tree.insert(d.leafHash)
-      leaves.push({
-        instance: d.instance,
-        hash: d.hash,
-        block: d.block,
-        index: index++,
+      trees[d.type].insert(d.event.leafHash)
+      leaves[d.type].push({
+        instance: d.event.instance,
+        hash: d.event.hash,
+        block: d.event.block,
+        index: index[d.type]++,
       })
     }
-    const newRoot = toFixedHex(tree.root())
+    for (let type of types) {
+      newRoots[type] = toFixedHex(trees[type].root())
+    }
 
-    console.log(`Submitting tree update from ${oldRoot} to ${newRoot} adding ${leaves.length} new leaves`)
-    const r = await farm.methods.updateDepositsRoot(oldRoot, newRoot, leaves).send({ from: web3.eth.defaultAccount, gas: 4e6 })
+    console.log(`Submitting tree update with ${leaves['deposit'].length + leaves['withdraw'].length} items`)
+    const r = await farm.methods.updateRoots(
+      oldRoots['deposit'],
+      newRoots['deposit'],
+      leaves['deposit'],
+      oldRoots['withdraw'],
+      newRoots['withdraw'],
+      leaves['withdraw'],
+    ).send({ from: web3.eth.defaultAccount, gas: 8e6 })
     console.log(`Transaction: https://etherscan.io/tx/${r.transactionHash}`)
   }
-  if (newDeposits.length > 0) {
-    await redis.rpush('deposits', newDeposits)
+
+  for (let type of types) {
+    if (newEvents[type].length > 0) {
+      await redis.rpush(type, newEvents[type].map(x => x.leafHash))
+    }
   }
   await redis.set('lastBlock', currentBlock)
   console.log('Done')
@@ -58,4 +85,3 @@ async function main() {
 }
 
 main()
-// test()

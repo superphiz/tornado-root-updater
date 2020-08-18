@@ -2,7 +2,15 @@
 
 Uploads deposit and withdrawal events from tornado instances into farmer tree
 
-## Usage
+## Usage with docker
+
+```shell script
+wget https://raw.githubusercontent.com/tornadocash/root-updater/master/docker-compose.yml
+vi docker-compose.yml # update env vars
+docker-compose up -d
+```
+
+## Usage for development
 
 ```shell script
 npm i
