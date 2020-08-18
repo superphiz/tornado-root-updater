@@ -1,6 +1,6 @@
 require('dotenv').config()
 const { web3, redis, farm } = require('./singletons')
-const instances = require('../instanceAddresses.json')
+const instances = require('../instances.json')
 const merkleTree = require('fixed-merkle-tree')
 const { getFarmEvents, getTornadoEvents } = require('./events')
 const { toFixedHex, poseidonHash2 } = require('./utils')
@@ -81,7 +81,11 @@ async function main() {
   }
   await redis.set('lastBlock', currentBlock)
   console.log('Done')
-  process.exit(0)
 }
 
 main()
+setTimeout(() => {
+  main()
+  setInterval(main, 24 * 60 * 60 * 1000)
+}, new Date(new Date().setHours(24, 0, 0, 0)) - new Date()) // next midnight
+

@@ -1,8 +1,8 @@
-FROM node:11
+FROM node:12
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm install && npm cache clean --force
+COPY package.json yarn.lock ./
+RUN yarn install && yarn cache clean
 COPY . .
 
-CMD ["npm", "run", "start"]
+CMD ["yarn", "start"]
