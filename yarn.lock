@@ -240,9 +240,9 @@
   integrity sha512-rr+OQyAjxze7GgWrSaJwydHStIhHq2lvY3BOC2Mj7KnzI7XK0Uw1TOOdI9lDoajEbSWLiYgoo4f1R51erQfhPQ==
 
 "@types/node@*":
-  version "14.0.27"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.0.27.tgz#a151873af5a5e851b51b3b065c9e63390a9e0eb1"
-  integrity sha512-kVrqXhbclHNHGu9ztnAwSncIgJv/FaxmzXJvGXNdcCpV1b8u1/Mi6z6m0vwy0LzKeXFTPLH0NzwmoJ3fNCIq0g==
+  version "14.6.0"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.6.0.tgz#7d4411bf5157339337d7cff864d9ff45f177b499"
+  integrity sha512-mikldZQitV94akrc4sCcSjtJfsTKt4p+e/s0AGscVA6XArQ9kFclP+ZiYUMnq987rc6QlYxXv/EivqlfSLxpKA==
 
 "@types/node@^12.12.6":
   version "12.12.54"
@@ -720,13 +720,13 @@ cipher-base@^1.0.0, cipher-base@^1.0.1, cipher-base@^1.0.3:
     inherits "^2.0.1"
     safe-buffer "^5.0.1"
 
-"circomlib@git+https://github.com/tornadocash/circomlib.git#6282474dc03e47a7cba1486e6ac8df08842314c3":
+"circomlib@git+https://github.com/tornadocash/circomlib.git#5beb6aee94923052faeecea40135d45b6ce6172c":
   version "0.0.20"
-  resolved "git+https://github.com/tornadocash/circomlib.git#6282474dc03e47a7cba1486e6ac8df08842314c3"
+  resolved "git+https://github.com/tornadocash/circomlib.git#5beb6aee94923052faeecea40135d45b6ce6172c"
   dependencies:
     blake-hash "^1.1.0"
     blake2b "^2.1.3"
-    snarkjs "git+https://github.com/peppersec/snarkjs.git#869181cfaf7526fe8972073d31655493a04326d5"
+    snarkjs "git+https://github.com/tornadocash/snarkjs.git#869181cfaf7526fe8972073d31655493a04326d5"
     typedarray-to-buffer "^3.1.5"
     web3 "^1.2.11"
 
@@ -1556,12 +1556,12 @@ find-up@^3.0.0:
   dependencies:
     locate-path "^3.0.0"
 
-fixed-merkle-tree@^0.3.3:
-  version "0.3.3"
-  resolved "https://registry.yarnpkg.com/fixed-merkle-tree/-/fixed-merkle-tree-0.3.3.tgz#edd12e1a0234174fd9eeb363ad01d902e280a261"
-  integrity sha512-a+gPKwbz+TyGRDDsMBojhoEui2k2GwMnZZzPJg4DizwN+y1zRbTQl91KLyuvIJDygle/nI+ygaRtLPg9DYoFDw==
+fixed-merkle-tree@^0.3.4:
+  version "0.3.4"
+  resolved "https://registry.yarnpkg.com/fixed-merkle-tree/-/fixed-merkle-tree-0.3.4.tgz#533888cfacca00f0b4e26c952173be7e456ae63a"
+  integrity sha512-0nDwPR/WV9nViiItNGr3A8LDCh27JDEqemW2I0i1HK6kkpvPzXfoBSolPXmqg0eo2i/UMwlxF2d6m0F/vyfeMA==
   dependencies:
-    circomlib "git+https://github.com/tornadocash/circomlib.git#6282474dc03e47a7cba1486e6ac8df08842314c3"
+    circomlib "git+https://github.com/tornadocash/circomlib.git#5beb6aee94923052faeecea40135d45b6ce6172c"
     snarkjs "git+https://github.com/tornadocash/snarkjs.git#869181cfaf7526fe8972073d31655493a04326d5"
 
 flat-cache@^2.0.1:
@@ -3077,20 +3077,8 @@ slice-ansi@^2.1.0:
     astral-regex "^1.0.0"
     is-fullwidth-code-point "^2.0.0"
 
-"snarkjs@git+https://github.com/peppersec/snarkjs.git#869181cfaf7526fe8972073d31655493a04326d5":
-  version "0.1.20"
-  resolved "git+https://github.com/peppersec/snarkjs.git#869181cfaf7526fe8972073d31655493a04326d5"
-  dependencies:
-    big-integer "^1.6.43"
-    chai "^4.2.0"
-    escape-string-regexp "^1.0.5"
-    eslint "^5.16.0"
-    keccak "^2.0.0"
-    yargs "^12.0.5"
-
 "snarkjs@git+https://github.com/tornadocash/snarkjs.git#869181cfaf7526fe8972073d31655493a04326d5":
   version "0.1.20"
-  uid "869181cfaf7526fe8972073d31655493a04326d5"
   resolved "git+https://github.com/tornadocash/snarkjs.git#869181cfaf7526fe8972073d31655493a04326d5"
   dependencies:
     big-integer "^1.6.43"
