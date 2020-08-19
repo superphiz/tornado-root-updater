@@ -13,9 +13,9 @@ docker-compose up -d
 ## Usage for development
 
 ```shell script
-npm i
+yarn
 cp .env.example .env
-npm run start
+yarn start
 ```
 
 Caches events from both farmer and tornado cash instances

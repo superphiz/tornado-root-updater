@@ -1,4 +1,5 @@
 require('dotenv').config()
+const cron = require('cron')
 const { web3, redis, farm } = require('./singletons')
 const instances = require('../instances.json')
 const merkleTree = require('fixed-merkle-tree')
@@ -27,7 +28,7 @@ async function main() {
   let index = {}
 
   console.log(`Getting events for blocks ${startingBlock} to ${currentBlock}`)
-  for (let type of types) {
+  for (const type of types) {
     ({
       knownEvents: knownEvents[type],
       newEvents: newEvents[type],
@@ -44,7 +45,7 @@ async function main() {
     let newRoots = {}
     let leaves = {}
 
-    for (let type of types) {
+    for (const type of types) {
       leaves[type] = []
       oldRoots[type] = toFixedHex(trees[type].root())
     }
@@ -58,7 +59,7 @@ async function main() {
         index: index[d.type]++,
       })
     }
-    for (let type of types) {
+    for (const type of types) {
       newRoots[type] = toFixedHex(trees[type].root())
     }
 
@@ -74,7 +75,7 @@ async function main() {
     console.log(`Transaction: https://etherscan.io/tx/${r.transactionHash}`)
   }
 
-  for (let type of types) {
+  for (const type of types) {
     if (newEvents[type].length > 0) {
       await redis.rpush(type, newEvents[type].map(x => x.leafHash))
     }
@@ -83,9 +84,4 @@ async function main() {
   console.log('Done')
 }
 
-main()
-setTimeout(() => {
-  main()
-  setInterval(main, 24 * 60 * 60 * 1000)
-}, new Date(new Date().setHours(24, 0, 0, 0)) - new Date()) // next midnight
-
+cron.job(process.env.CRON_EXPRESSION, main, null, true, null, null, true)

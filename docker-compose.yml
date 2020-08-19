@@ -11,6 +11,7 @@ services:
       FARM_ADDR: 0x46226040037A0A5bf059e2e1Dc3dc97Ef653735C
       MERKLE_TREE_LEVELS: 20
       INSERT_BATCH_SIZE: 1000
+      CRON_EXPRESSION: 0 0 0 * * *
 
   redis:
     image: redis

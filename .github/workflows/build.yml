@@ -40,7 +40,8 @@ jobs:
         uses: docker/build-push-action@v1.1.0
         with:
           dockerfile: Dockerfile
-          repository: tornadocash/root-updater
+          repository: ${{ github.repository }}
+          cache_froms: ${{ github.repository }}:latest
           tag_with_ref: true
           tags: latest
           username: ${{ secrets.DOCKER_USERNAME }}
