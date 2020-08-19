@@ -87,5 +87,3 @@ async function main() {
 }
 
 cron.job(process.env.CRON_EXPRESSION, main, null, true, null, null, true)
-
-qwe qwe broken build
