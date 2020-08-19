@@ -17,7 +17,7 @@ async function getEvents(startBlock, endBlock, type) {
   return { knownEvents, uncachedEvents: farmEvents, newEvents }
 }
 
-async function main() {
+async function main(isRetry = false) {
   const startingBlock = Number(await redis.get('lastBlock') || 0) + 1
   const currentBlock = await web3.eth.getBlockNumber() - 12
   const types = ['deposit', 'withdraw']
@@ -50,6 +50,19 @@ async function main() {
     for (const type of types) {
       leaves[type] = []
       oldRoots[type] = toFixedHex(trees[type].root())
+      const method = type === 'deposit' ? 'depositRoot' : 'withdrawalRoot'
+      const rootInContract = await farm.methods[method]().call()
+      if (oldRoots[type] !== rootInContract) {
+        console.log(`Outdated ${type} root: ${oldRoots[type]} != ${rootInContract}!`)
+        if (isRetry) {
+          console.log('Quitting')
+          return
+        } else {
+          console.log('Trying to clear cache and try again')
+          await redis.flushdb()
+          return main(true)
+        }
+      }
     }
     const batch = events.splice(0, process.env.INSERT_BATCH_SIZE)
     for (const d of batch) {
@@ -78,8 +91,8 @@ async function main() {
   }
 
   for (const type of types) {
-    if (newEvents[type].length > 0 || uncachedEvents[type].length > 0) {
-      await redis.rpush(type, uncachedEvents[type].concat(newEvents[type].map(x => x.leafHash)))
+    if (uncachedEvents[type].length > 0) {
+      await redis.rpush(type, uncachedEvents[type])
     }
   }
   await redis.set('lastBlock', currentBlock)
