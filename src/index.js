@@ -14,7 +14,7 @@ async function getEvents(startBlock, endBlock, type) {
 
   let newEvents = await getTornadoEvents(instances, startBlock, endBlock, type)
   newEvents = newEvents.filter(x => !knownEventsSet.has(x.leafHash))
-  return { knownEvents, newEvents }
+  return { knownEvents, uncachedEvents: farmEvents, newEvents }
 }
 
 async function main() {
@@ -24,6 +24,7 @@ async function main() {
 
   let knownEvents = {}
   let newEvents = {}
+  let uncachedEvents = {}
   let trees = {}
   let index = {}
 
@@ -32,6 +33,7 @@ async function main() {
     ({
       knownEvents: knownEvents[type],
       newEvents: newEvents[type],
+      uncachedEvents: uncachedEvents[type],
     } = await getEvents(startingBlock, currentBlock, type))
     trees[type] = new merkleTree(process.env.MERKLE_TREE_LEVELS, knownEvents[type], { hashFunction: poseidonHash2 })
     index[type] = knownEvents[type].length
@@ -76,8 +78,8 @@ async function main() {
   }
 
   for (const type of types) {
-    if (newEvents[type].length > 0) {
-      await redis.rpush(type, newEvents[type].map(x => x.leafHash))
+    if (newEvents[type].length > 0 || uncachedEvents[type].length > 0) {
+      await redis.rpush(type, uncachedEvents[type].concat(newEvents[type].map(x => x.leafHash)))
     }
   }
   await redis.set('lastBlock', currentBlock)
