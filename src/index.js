@@ -21,7 +21,7 @@ async function getKnownEvents(type) {
 }
 
 /** Note: Mutates events array and tree */
-async function getNextChunk(type, events, tree) {
+function getNextChunk(type, events, tree) {
   const leaves = []
   let index = tree.elements().length
   const oldRoot = toFixedHex(tree.root())
@@ -82,7 +82,7 @@ async function main(isRetry = false) {
       }
     }
 
-    console.log(`Submitting tree update`)
+    console.log('Submitting tree update')
     const r = await farm.methods.updateRoots(...Object.values(chunks['deposit']), ...Object.values(chunks['withdrawal']))
       .send({ from: web3.eth.defaultAccount, gas: 6e6 })
     console.log(`Transaction: https://etherscan.io/tx/${r.transactionHash}`)
