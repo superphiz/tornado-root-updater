@@ -4,6 +4,7 @@ services:
   app:
     image: tornadocash/root-updater
     depends_on: [redis]
+    restart: always
     environment:
       RPC_URL: https://kovan.infura.io/v3/...
       PRIVATE_KEY: ...
