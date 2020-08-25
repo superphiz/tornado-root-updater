@@ -6,95 +6,88 @@ const merkleTree = require('fixed-merkle-tree')
 const { getFarmEvents, getTornadoEvents } = require('./events')
 const { toFixedHex, poseidonHash2 } = require('./utils')
 
-async function getEvents(startBlock, endBlock, type) {
-  const farmCachedEvents = await redis.lrange(type, 0, -1)
-  const farmEvents = (await getFarmEvents(startBlock, endBlock, type)).map(x => x.leafHash)
-  const knownEvents = farmCachedEvents.concat(farmEvents)
-  const knownEventsSet = new Set(knownEvents)
+const CONFIRMATION_BLOCKS = process.env.CONFIRMATION_BLOCKS || 12
 
-  let newEvents = await getTornadoEvents(instances, startBlock, endBlock, type)
-  newEvents = newEvents.filter(x => !knownEventsSet.has(x.leafHash))
-  return { knownEvents, uncachedEvents: farmEvents, newEvents }
+async function getKnownEvents(type) {
+  const startBlock = Number(await redis.get(`${type}LastBlock`) || 0) + 1
+  const endBlock = await web3.eth.getBlockNumber() - CONFIRMATION_BLOCKS
+  const cachedEvents = await redis.lrange(type, 0, -1)
+  const newEvents = (await getFarmEvents(startBlock, endBlock, type))
+  if (newEvents.length > 0) {
+    await redis.rpush(type, newEvents)
+  }
+  await redis.set(`${type}LastBlock`, endBlock)
+  return cachedEvents.concat(newEvents)
+}
+
+/** Note: Mutates events array and tree */
+async function getNextChunk(type, events, tree) {
+  const leaves = []
+  let index = tree.elements().length
+  const oldRoot = toFixedHex(tree.root())
+  const batch = events.splice(0, process.env.INSERT_BATCH_SIZE)
+  for (const e of batch) {
+    tree.insert(e.leafHash)
+    leaves.push({
+      instance: e.instance,
+      hash: e.hash,
+      block: e.block,
+      index: index++,
+    })
+  }
+  const newRoot = toFixedHex(tree.root())
+  return {
+    oldRoot,
+    newRoot,
+    leaves,
+  }
+}
+
+async function checkRoot(type, root, isRetry) {
+  const method = type === 'deposit' ? 'depositRoot' : 'withdrawalRoot'
+  const rootInContract = await farm.methods[method]().call()
+  if (root !== rootInContract) {
+    console.log(`Outdated ${type} root: ${root} != ${rootInContract}!`)
+    if (isRetry) {
+      console.log('Quitting')
+    } else {
+      console.log('Trying to clear cache and try again')
+      await redis.flushdb()
+      await main(true)
+    }
+    return true
+  }
+  return false
 }
 
 async function main(isRetry = false) {
+  const newEvents = {}
+  const trees = {}
   const startingBlock = Number(await redis.get('lastBlock') || 0) + 1
-  const currentBlock = await web3.eth.getBlockNumber() - 12
-  const types = ['deposit', 'withdraw']
-
-  let knownEvents = {}
-  let newEvents = {}
-  let uncachedEvents = {}
-  let trees = {}
-  let index = {}
-
+  const currentBlock = await web3.eth.getBlockNumber() - CONFIRMATION_BLOCKS
   console.log(`Getting events for blocks ${startingBlock} to ${currentBlock}`)
-  for (const type of types) {
-    ({
-      knownEvents: knownEvents[type],
-      newEvents: newEvents[type],
-      uncachedEvents: uncachedEvents[type],
-    } = await getEvents(startingBlock, currentBlock, type))
-    trees[type] = new merkleTree(process.env.MERKLE_TREE_LEVELS, knownEvents[type], { hashFunction: poseidonHash2 })
-    index[type] = knownEvents[type].length
+  for (const type of ['deposit', 'withdrawal']) {
+    const knownEvents = await getKnownEvents(type)
+    newEvents[type]  = await getTornadoEvents(instances, startingBlock, currentBlock, type)
+    newEvents[type] = newEvents[type].filter(x => !knownEvents.includes(x.leafHash))
+    trees[type] = new merkleTree(process.env.MERKLE_TREE_LEVELS, knownEvents, { hashFunction: poseidonHash2 })
   }
 
-  // zip deposit and withdraw arrays
-  let events = Object.keys(newEvents).map(type => newEvents[type].map(event => ({ type, event }))).flat()
-
-  while(events.length) {
-    let oldRoots = {}
-    let newRoots = {}
-    let leaves = {}
-
-    for (const type of types) {
-      leaves[type] = []
-      oldRoots[type] = toFixedHex(trees[type].root())
-      const method = type === 'deposit' ? 'depositRoot' : 'withdrawalRoot'
-      const rootInContract = await farm.methods[method]().call()
-      if (oldRoots[type] !== rootInContract) {
-        console.log(`Outdated ${type} root: ${oldRoots[type]} != ${rootInContract}!`)
-        if (isRetry) {
-          console.log('Quitting')
-          return
-        } else {
-          console.log('Trying to clear cache and try again')
-          await redis.flushdb()
-          return main(true)
-        }
+  while(newEvents['deposit'].length || newEvents['withdrawal'].length) {
+    const chunks = {}
+    for (const type of ['deposit', 'withdrawal']) {
+      chunks[type] = await getNextChunk(type, newEvents[type], trees[type])
+      if (await checkRoot(type, chunks[type].oldRoot, isRetry)) {
+        return
       }
     }
-    const batch = events.splice(0, process.env.INSERT_BATCH_SIZE)
-    for (const d of batch) {
-      trees[d.type].insert(d.event.leafHash)
-      leaves[d.type].push({
-        instance: d.event.instance,
-        hash: d.event.hash,
-        block: d.event.block,
-        index: index[d.type]++,
-      })
-    }
-    for (const type of types) {
-      newRoots[type] = toFixedHex(trees[type].root())
-    }
 
-    console.log(`Submitting tree update with ${leaves['deposit'].length + leaves['withdraw'].length} items`)
-    const r = await farm.methods.updateRoots(
-      oldRoots['deposit'],
-      newRoots['deposit'],
-      leaves['deposit'],
-      oldRoots['withdraw'],
-      newRoots['withdraw'],
-      leaves['withdraw'],
-    ).send({ from: web3.eth.defaultAccount, gas: 8e6 })
+    console.log(`Submitting tree update`)
+    const r = await farm.methods.updateRoots(...Object.values(chunks['deposit']), ...Object.values(chunks['withdrawal']))
+      .send({ from: web3.eth.defaultAccount, gas: 6e6 })
     console.log(`Transaction: https://etherscan.io/tx/${r.transactionHash}`)
   }
 
-  for (const type of types) {
-    if (uncachedEvents[type].length > 0) {
-      await redis.rpush(type, uncachedEvents[type])
-    }
-  }
   await redis.set('lastBlock', currentBlock)
   console.log('Done')
 }

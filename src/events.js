@@ -25,16 +25,10 @@ async function getTornadoEvents(instance, startBlock, endBlock, type) {
 
 async function getFarmEvents(startBlock, endBlock, type) {
   const eventName = type === 'deposit' ? 'DepositData' : 'WithdrawalData'
-
   const events = await farm.getPastEvents(eventName, { fromBlock: startBlock, toBlock: endBlock })
   return events
     .sort((a, b) => a.returnValues.index - b.returnValues.index)
-    .map(e => ({
-      instance: e.returnValues.instance,
-      hash: e.returnValues.hash,
-      block: e.returnValues.block,
-      leafHash: poseidonHash([e.returnValues.instance, e.returnValues.hash, e.returnValues.block]),
-    }))
+    .map(e => poseidonHash([e.returnValues.instance, e.returnValues.hash, e.returnValues.block]))
 }
 
 module.exports = {
