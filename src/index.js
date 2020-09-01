@@ -7,9 +7,10 @@ const { getFarmEvents, getTornadoEvents } = require('./events')
 const { toFixedHex, poseidonHash2 } = require('./utils')
 
 const CONFIRMATION_BLOCKS = process.env.CONFIRMATION_BLOCKS || 12
+const STARTING_BLOCK = process.env.STARTING_BLOCK || 0
 
 async function getKnownEvents(type) {
-  const startBlock = Number(await redis.get(`${type}LastBlock`) || 0) + 1
+  const startBlock = Number(await redis.get(`${type}LastBlock`) || STARTING_BLOCK) + 1
   const endBlock = await web3.eth.getBlockNumber() - CONFIRMATION_BLOCKS
   const cachedEvents = await redis.lrange(type, 0, -1)
   const newEvents = (await getFarmEvents(startBlock, endBlock, type))
@@ -93,3 +94,4 @@ async function main(isRetry = false) {
 }
 
 cron.job(process.env.CRON_EXPRESSION, main, null, true, null, null, true)
+ё
