@@ -94,4 +94,4 @@ async function main(isRetry = false) {
 }
 
 cron.job(process.env.CRON_EXPRESSION, main, null, true, null, null, true)
-ё
+
