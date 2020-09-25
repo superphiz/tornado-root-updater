@@ -10,10 +10,10 @@ const CONFIRMATION_BLOCKS = process.env.CONFIRMATION_BLOCKS || 12
 const STARTING_BLOCK = process.env.STARTING_BLOCK || 0
 
 async function getKnownEvents(type) {
-  const startBlock = Number(await redis.get(`${type}LastBlock`) || STARTING_BLOCK) + 1
-  const endBlock = await web3.eth.getBlockNumber() - CONFIRMATION_BLOCKS
+  const startBlock = Number((await redis.get(`${type}LastBlock`)) || STARTING_BLOCK) + 1
+  const endBlock = (await web3.eth.getBlockNumber()) - CONFIRMATION_BLOCKS
   const cachedEvents = await redis.lrange(type, 0, -1)
-  const newEvents = (await getFarmEvents(startBlock, endBlock, type))
+  const newEvents = await getFarmEvents(startBlock, endBlock, type)
   if (newEvents.length > 0) {
     await redis.rpush(type, newEvents)
   }
@@ -64,17 +64,19 @@ async function checkRoot(type, root, isRetry) {
 async function main(isRetry = false) {
   const newEvents = {}
   const trees = {}
-  const startingBlock = Number(await redis.get('lastBlock') || 0) + 1
-  const currentBlock = await web3.eth.getBlockNumber() - CONFIRMATION_BLOCKS
+  const startingBlock = Number((await redis.get('lastBlock')) || 0) + 1
+  const currentBlock = (await web3.eth.getBlockNumber()) - CONFIRMATION_BLOCKS
   console.log(`Getting events for blocks ${startingBlock} to ${currentBlock}`)
   for (const type of ['deposit', 'withdrawal']) {
     const knownEvents = await getKnownEvents(type)
-    newEvents[type]  = await getTornadoEvents(instances, startingBlock, currentBlock, type)
-    newEvents[type] = newEvents[type].filter(x => !knownEvents.includes(x.leafHash))
-    trees[type] = new merkleTree(process.env.MERKLE_TREE_LEVELS, knownEvents, { hashFunction: poseidonHash2 })
+    newEvents[type] = await getTornadoEvents(instances, startingBlock, currentBlock, type)
+    newEvents[type] = newEvents[type].filter((x) => !knownEvents.includes(x.leafHash))
+    trees[type] = new merkleTree(process.env.MERKLE_TREE_LEVELS, knownEvents, {
+      hashFunction: poseidonHash2,
+    })
   }
 
-  while(newEvents['deposit'].length || newEvents['withdrawal'].length) {
+  while (newEvents['deposit'].length || newEvents['withdrawal'].length) {
     const chunks = {}
     for (const type of ['deposit', 'withdrawal']) {
       chunks[type] = await getNextChunk(type, newEvents[type], trees[type])
@@ -83,8 +85,11 @@ async function main(isRetry = false) {
       }
     }
 
-    console.log(`Submitting tree update with ${chunks['deposit'].leaves.length} deposits and ${chunks['withdrawal'].leaves.length} withdrawals`)
-    const r = await farm.methods.updateRoots(...Object.values(chunks['deposit']), ...Object.values(chunks['withdrawal']))
+    console.log(
+      `Submitting tree update with ${chunks['deposit'].leaves.length} deposits and ${chunks['withdrawal'].leaves.length} withdrawals`,
+    )
+    const r = await farm.methods
+      .updateRoots(...Object.values(chunks['deposit']), ...Object.values(chunks['withdrawal']))
       .send({ from: web3.eth.defaultAccount, gas: 6e6 })
     console.log(`Transaction: https://etherscan.io/tx/${r.transactionHash}`)
   }
@@ -94,4 +99,3 @@ async function main(isRetry = false) {
 }
 
 cron.job(process.env.CRON_EXPRESSION, main, null, true, null, null, true)
-

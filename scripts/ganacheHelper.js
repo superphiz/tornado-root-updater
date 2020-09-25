@@ -2,14 +2,17 @@
 function send(method, params = []) {
   return new Promise((resolve, reject) => {
     // eslint-disable-next-line no-undef
-    web3.currentProvider.send({
-      jsonrpc: '2.0',
-      id: Date.now(),
-      method,
-      params,
-    }, (err, res) => {
-      return err ? reject(err) : resolve(res)
-    })
+    web3.currentProvider.send(
+      {
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method,
+        params,
+      },
+      (err, res) => {
+        return err ? reject(err) : resolve(res)
+      },
+    )
   })
 }
 

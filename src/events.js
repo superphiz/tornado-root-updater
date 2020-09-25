@@ -4,7 +4,7 @@ const { poseidonHash } = require('./utils')
 
 async function getTornadoEvents(instance, startBlock, endBlock, type) {
   if (Array.isArray(instance)) {
-    return (await Promise.all(instance.map(i => getTornadoEvents(i, startBlock, endBlock, type)))).flat()
+    return (await Promise.all(instance.map((i) => getTornadoEvents(i, startBlock, endBlock, type)))).flat()
   }
 
   const eventName = type === 'deposit' ? 'Deposit' : 'Withdrawal'
@@ -12,10 +12,13 @@ async function getTornadoEvents(instance, startBlock, endBlock, type) {
 
   const contract = new web3.eth.Contract(tornadoAbi, instance)
   // todo paging
-  const events = await contract.getPastEvents(eventName, { fromBlock: startBlock, toBlock: endBlock })
+  const events = await contract.getPastEvents(eventName, {
+    fromBlock: startBlock,
+    toBlock: endBlock,
+  })
   return events
     .sort((a, b) => a.returnValues.index - b.returnValues.index)
-    .map(e => ({
+    .map((e) => ({
       instance,
       hash: e.returnValues[hashName],
       block: e.blockNumber,
@@ -25,10 +28,13 @@ async function getTornadoEvents(instance, startBlock, endBlock, type) {
 
 async function getFarmEvents(startBlock, endBlock, type) {
   const eventName = type === 'deposit' ? 'DepositData' : 'WithdrawalData'
-  const events = await farm.getPastEvents(eventName, { fromBlock: startBlock, toBlock: endBlock })
+  const events = await farm.getPastEvents(eventName, {
+    fromBlock: startBlock,
+    toBlock: endBlock,
+  })
   return events
     .sort((a, b) => a.returnValues.index - b.returnValues.index)
-    .map(e => poseidonHash([e.returnValues.instance, e.returnValues.hash, e.returnValues.block]))
+    .map((e) => poseidonHash([e.returnValues.instance, e.returnValues.hash, e.returnValues.block]))
 }
 
 module.exports = {
