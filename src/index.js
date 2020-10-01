@@ -88,9 +88,12 @@ async function main(isRetry = false) {
     console.log(
       `Submitting tree update with ${chunks['deposit'].leaves.length} deposits and ${chunks['withdrawal'].leaves.length} withdrawals`,
     )
-    const r = await farm.methods
-      .updateRoots(...Object.values(chunks['deposit']), ...Object.values(chunks['withdrawal']))
-      .send({ from: web3.eth.defaultAccount, gas: 6e6 })
+    const method = await farm.methods.updateRoots(
+      ...Object.values(chunks['deposit']),
+      ...Object.values(chunks['withdrawal']),
+    )
+    const gas = await method.estimateGas({ from: web3.eth.defaultAccount })
+    const r = await method.send({ from: web3.eth.defaultAccount, gas: Number(gas) + 50000 })
     console.log(`Transaction: https://etherscan.io/tx/${r.transactionHash}`)
   }
 
