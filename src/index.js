@@ -13,7 +13,7 @@ async function getKnownEvents(type) {
   const startBlock = Number(await redis.get(`${type}LastBlock`) || STARTING_BLOCK) + 1
   const endBlock = await web3.eth.getBlockNumber() - CONFIRMATION_BLOCKS
   const cachedEvents = await redis.lrange(type, 0, -1)
-  const newEvents = (await getFarmEvents(startBlock, endBlock, type))
+  const newEvents = await getFarmEvents(startBlock, endBlock, type)
   if (newEvents.length > 0) {
     await redis.rpush(type, newEvents)
   }
@@ -62,6 +62,7 @@ async function checkRoot(type, root, isRetry) {
 }
 
 async function main(isRetry = false) {
+  console.log('Started tree update')
   const newEvents = {}
   const trees = {}
   const startingBlock = Number(await redis.get('lastBlock') || 0) + 1
@@ -85,7 +86,7 @@ async function main(isRetry = false) {
 
     console.log(`Submitting tree update with ${chunks['deposit'].leaves.length} deposits and ${chunks['withdrawal'].leaves.length} withdrawals`)
     const r = await farm.methods.updateRoots(...Object.values(chunks['deposit']), ...Object.values(chunks['withdrawal']))
-      .send({ from: web3.eth.defaultAccount, gas: 6e6 })
+      .send({ from: web3.eth.defaultAccount, gas: 10e6 })
     console.log(`Transaction: https://etherscan.io/tx/${r.transactionHash}`)
   }
 
