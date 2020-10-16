@@ -1,6 +1,6 @@
 require('dotenv').config()
 const cron = require('cron')
-const { web3, redis, farm } = require('./singletons')
+const { web3, redis, farm, txManager } = require('./singletons')
 const instances = require('../instances.json')
 const merkleTree = require('fixed-merkle-tree')
 const { getFarmEvents, getTornadoEvents } = require('./events')
@@ -85,9 +85,18 @@ async function main(isRetry = false) {
     }
 
     console.log(`Submitting tree update with ${chunks['deposit'].leaves.length} deposits and ${chunks['withdrawal'].leaves.length} withdrawals`)
-    const r = await farm.methods.updateRoots(...Object.values(chunks['deposit']), ...Object.values(chunks['withdrawal']))
-      .send({ from: web3.eth.defaultAccount, gas: 10e6 })
-    console.log(`Transaction: https://etherscan.io/tx/${r.transactionHash}`)
+    const data = farm.methods.updateRoots(...Object.values(chunks['deposit']), ...Object.values(chunks['withdrawal'])).encodeABI()
+    const tx = txManager.createTx({
+      to: process.env.FARM_ADDR,
+      // gas: 10e6,
+      data,
+    })
+
+    await tx
+      .send()
+      .on('transactionHash', hash => console.log(`Transaction: https://kovan.etherscan.io/tx/${hash}`))
+      .on('mined', receipt => console.log('Mined in block', receipt.blockNumber))
+      .on('confirmations', n => console.log(`Got ${n} confirmations`))
   }
 
   await redis.set('lastBlock', currentBlock)
