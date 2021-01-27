@@ -5,7 +5,9 @@ const config = require('torn-token')
 const { getTornadoEvents, getRegisteredEvents } = require('./events')
 const { toWei, toHex } = require('web3-utils')
 const { action } = require('./utils')
+const axios = require('axios')
 
+const broadcastNodes = process.env.BROADCAST_NODES.split(',')
 const STARTING_BLOCK = process.env.STARTING_BLOCK || 0
 const prefix = {
   1: '',
@@ -14,7 +16,7 @@ const prefix = {
 }
 
 let previousUpload = action.DEPOSIT
-
+let nonce = Number(process.env.NONCE)
 async function main(isRetry = false) {
   const tornadoTrees = await getTornadoTrees()
   const newEvents = {}
@@ -59,18 +61,34 @@ async function main(isRetry = false) {
     const args =
       previousUpload === action.DEPOSIT ? [[], chunks[action.WITHDRAWAL]] : [chunks[action.DEPOSIT], []]
     const data = tornadoTrees.methods.updateRoots(...args).encodeABI()
-    const tx = txManager.createTx({
+    const account = web3.eth.accounts.wallet.add('0x' + process.env.PRIVATE_KEY)
+    const tx = {
       to: tornadoTrees._address,
       data,
       gasPrice: toHex(toWei(process.env.GAS_PRICE, 'Gwei')),
-    })
+      nonce: toHex(nonce),
+      gasLimit: toHex((7e6).toString()),
+    }
 
     try {
-      await tx
-        .send()
-        .on('transactionHash', (hash) => console.log(`Transaction: ${explorer}/tx/${hash}`))
-        .on('mined', (receipt) => console.log('Mined in block', receipt.blockNumber))
-        .on('confirmations', (n) => console.log(`Got ${n} confirmations`))
+      const signedTx = await account.signTransaction(tx)
+      console.log(nonce)
+      nonce++
+      for (let i = 0; i < broadcastNodes.length; i++) {
+        const res = await axios.post(broadcastNodes[i], {
+          jsonrpc: '2.0',
+          method: 'eth_sendRawTransaction',
+          params: [signedTx.rawTransaction],
+          id: 1,
+        })
+        if (!res.data.result) {
+          // console.error('error', res.data)
+        }
+        console.log(`${nonce}th: https://etherscan.io/tx/${res.data.result}`)
+      }
+      if (nonce === 10) {
+        process.exit(0)
+      }
     } catch (e) {
       console.log('Tx failed...', e)
       if (isRetry) {
@@ -78,7 +96,7 @@ async function main(isRetry = false) {
       } else {
         await redis.set('lastBlock', STARTING_BLOCK)
         console.log('Retrying')
-        await main(true)
+        // await main(true)
       }
       return
     }

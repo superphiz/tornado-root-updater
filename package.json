@@ -11,6 +11,7 @@
   "author": "Roman Semenov <semenov.roma@gmail.com>",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.21.1",
     "circomlib": "git+https://github.com/tornadocash/circomlib.git#3b492f9801573eebcfe1b6c584afe8a3beecf2b4",
     "cron": "^1.8.2",
     "dotenv": "^8.2.0",
