@@ -1,13 +1,16 @@
 require('dotenv').config()
 const Web3 = require('web3')
+const ethers = require('ethers')
 const { TxManager } = require('tx-manager')
-const tornadoTreesAbi = require('../abi/tornadoTrees.json')
+const tornadoTreesV1Abi = require('../abi/TornadoTreesV1.abi')
+const tornadoTreesAbi = require('../abi/TornadoTrees.abi')
 const Redis = require('ioredis')
 const ENSResolver = require('./resolver')
 const resolver = new ENSResolver()
 const redis = new Redis(process.env.REDIS_URL)
 const config = require('torn-token')
 let tornadoTrees
+let tornadoTreesEthers
 let tornadoTreesV1
 
 const web3 = new Web3(process.env.RPC_URL)
@@ -22,6 +25,17 @@ const txManager = new TxManager({
     MAX_GAS_PRICE: process.env.GAS_PRICE,
   },
 })
+
+async function getEthersTornadoTrees() {
+  if (!tornadoTreesEthers) {
+    const tornadoTreesAddress = process.env.TORNADO_TREES
+      ? process.env.TORNADO_TREES
+      : await resolver.resolve(config.tornadoTrees.address)
+    tornadoTreesEthers = new ethers.Contract(tornadoTreesAddress, tornadoTreesAbi)
+    console.log('Resolved tornadoTrees contract:', tornadoTreesEthers.address)
+  }
+  return tornadoTreesEthers
+}
 
 async function getTornadoTrees() {
   if (!tornadoTrees) {
@@ -39,7 +53,7 @@ async function getTornadoTreesV1() {
     const tornadoTreesAddress = process.env.TORNADO_TREES_V1
       ? process.env.TORNADO_TREES_V1
       : await resolver.resolve(config.tornadoTrees.address)
-    tornadoTreesV1 = new web3.eth.Contract(tornadoTreesAbi, tornadoTreesAddress)
+    tornadoTreesV1 = new web3.eth.Contract(tornadoTreesV1Abi, tornadoTreesAddress)
     console.log('Resolved tornadoTreesV1 contract:', tornadoTreesV1._address)
   }
   return tornadoTreesV1
@@ -50,5 +64,6 @@ module.exports = {
   redis,
   getTornadoTrees,
   getTornadoTreesV1,
+  getEthersTornadoTrees,
   txManager,
 }
