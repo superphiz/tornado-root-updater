@@ -12,7 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.21.1",
-    "circomlib": "git+https://github.com/tornadocash/circomlib.git#3b492f9801573eebcfe1b6c584afe8a3beecf2b4",
+    "circomlib": "git+https://github.com/tornadocash/circomlib.git#d20d53411d1bef61f38c99a8b36d5d0cc4836aa1",
     "cron": "^1.8.2",
     "dotenv": "^8.2.0",
     "eth-ens-namehash": "^2.0.8",
