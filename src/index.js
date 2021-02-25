@@ -86,9 +86,9 @@ async function main(isRetry = false) {
         }
         console.log(`${nonce}th: https://etherscan.io/tx/${res.data.result}`)
       }
-      if (nonce === 10) {
-        process.exit(0)
-      }
+      // if (nonce === 10) {
+      //   process.exit(0)
+      // }
     } catch (e) {
       console.log('Tx failed...', e)
       if (isRetry) {
